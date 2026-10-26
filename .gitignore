@@ -41,4 +41,9 @@ example
 # generated native folders
 /ios
 /android
+
+# local settings (see .env.example)
 .env
+
+# Claude Code local config
+.claude/

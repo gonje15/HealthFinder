@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "HealthFinder",
-    "slug": "HealthFinder",
+    "slug": "healthfinder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -20,11 +20,21 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "HealthFinder",
+      "shortName": "HealthFinder",
+      "description": "Find nearby hospitals, clinics and pharmacies, even offline.",
+      "themeColor": "#0B7A5C"
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "HealthFinder uses your location to show health facilities near you."
+        }
+      ],
       [
         "expo-splash-screen",
         {
