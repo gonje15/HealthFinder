@@ -3,9 +3,10 @@ import { Platform } from 'react-native';
 
 import { Config } from '@/constants/config';
 import { getCurrentPosition, LocationError } from '@/services/location';
+import { loadFacilityList, searchFacilityList } from '@/services/facility-list';
 import { fetchNearbyFacilities } from '@/services/overpass';
 import { loadLastResult, saveLastResult } from '@/services/storage';
-import type { Coords, Facility, SavedResult } from '@/types/facility';
+import type { Coords, DataSource, Facility, SavedResult } from '@/types/facility';
 
 export type SearchStatus = 'idle' | 'locating' | 'loading';
 
@@ -63,6 +64,7 @@ export function useFacilities() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [fromCache, setFromCache] = useState(false);
+  const [source, setSource] = useState<DataSource | null>(null);
   const [hasLoadedCache, setHasLoadedCache] = useState(false);
 
   // Position from a live lookup this session; reused when only the radius changes.
@@ -74,7 +76,13 @@ export function useFacilities() {
     setPosition(saved.position);
     setRadiusKm(saved.radiusKm);
     setSavedAt(saved.savedAt);
+    setSource(saved.source ?? null);
     setFromCache(true);
+  }, []);
+
+  useEffect(() => {
+    // Start downloading (or reading the saved copy of) the facility list before the first search.
+    loadFacilityList();
   }, []);
 
   useEffect(() => {
@@ -118,13 +126,30 @@ export function useFacilities() {
 
       setStatus('loading');
       try {
-        if (isKnownOffline()) throw new Error('offline');
-        const results = await fetchNearbyFacilities(position, radius);
+        // The on-device list is instant and works offline; Overpass covers everywhere else.
+        const fromList = await searchFacilityList(position, radius);
+        let results: Facility[];
+        let resultSource: DataSource;
+        if (fromList) {
+          results = fromList.facilities;
+          resultSource = { kind: 'list', updatedAt: fromList.updatedAt };
+        } else {
+          if (isKnownOffline()) throw new Error('offline');
+          results = await fetchNearbyFacilities(position, radius);
+          resultSource = { kind: 'live' };
+        }
         if (id !== requestId.current) return;
-        const saved: SavedResult = { facilities: results, position, radiusKm: radius, savedAt: Date.now() };
+        const saved: SavedResult = {
+          facilities: results,
+          position,
+          radiusKm: radius,
+          savedAt: Date.now(),
+          source: resultSource,
+        };
         setFacilities(results);
         setPosition(position);
         setSavedAt(saved.savedAt);
+        setSource(resultSource);
         setFromCache(false);
         await saveLastResult(saved);
       } catch {
@@ -162,6 +187,7 @@ export function useFacilities() {
     status,
     notice,
     savedAt,
+    source,
     fromCache,
     hasLoadedCache,
     search,

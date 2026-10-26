@@ -2,8 +2,11 @@ import { Config } from '@/constants/config';
 import { FacilityTypeLabels, type Coords, type Facility, type FacilityType } from '@/types/facility';
 
 const FACILITY_TYPES: FacilityType[] = ['hospital', 'clinic', 'pharmacy'];
+// Primary-care places mapped under other tags (common for rural health posts) count as clinics.
+const CLINIC_AMENITIES = ['doctors', 'health_post'];
+const CLINIC_HEALTHCARE = ['doctor', 'health_post', 'centre'];
 
-type OverpassElement = {
+export type OverpassElement = {
   type: 'node' | 'way' | 'relation';
   id: number;
   lat?: number;
@@ -21,11 +24,12 @@ export class NetworkError extends Error {
 
 function buildQuery({ latitude, longitude }: Coords, radiusKm: number) {
   const around = `around:${Math.round(radiusKm * 1000)},${latitude},${longitude}`;
-  const types = FACILITY_TYPES.join('|');
+  const amenities = [...FACILITY_TYPES, ...CLINIC_AMENITIES].join('|');
+  const healthcare = [...FACILITY_TYPES, ...CLINIC_HEALTHCARE].join('|');
   return `[out:json][timeout:25];
 (
-  nwr["amenity"~"^(${types})$"](${around});
-  nwr["healthcare"~"^(${types})$"](${around});
+  nwr["amenity"~"^(${amenities})$"](${around});
+  nwr["healthcare"~"^(${healthcare})$"](${around});
 );
 out center tags;`;
 }
@@ -42,8 +46,11 @@ export function distanceKm(a: Coords, b: Coords) {
 }
 
 function facilityType(tags: Record<string, string>): FacilityType | undefined {
-  return FACILITY_TYPES.find((type) => tags.amenity === type) ??
-    FACILITY_TYPES.find((type) => tags.healthcare === type);
+  const type =
+    FACILITY_TYPES.find((t) => tags.amenity === t) ?? FACILITY_TYPES.find((t) => tags.healthcare === t);
+  if (type) return type;
+  if (CLINIC_AMENITIES.includes(tags.amenity) || CLINIC_HEALTHCARE.includes(tags.healthcare)) return 'clinic';
+  return undefined;
 }
 
 function firstValue(value: string | undefined) {

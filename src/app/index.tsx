@@ -13,7 +13,7 @@ import { RadiusOptionsKm } from '@/constants/config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { formatSavedAt, useFacilities } from '@/hooks/use-facilities';
 import { useTheme } from '@/hooks/use-theme';
-import type { Facility, FacilityType } from '@/types/facility';
+import type { DataSource, Facility, FacilityType } from '@/types/facility';
 
 type TypeFilter = 'all' | FacilityType;
 type ViewMode = 'list' | 'map';
@@ -41,6 +41,7 @@ export default function HomeScreen() {
     status,
     notice,
     savedAt,
+    source,
     fromCache,
     hasLoadedCache,
     search,
@@ -113,11 +114,11 @@ export default function HomeScreen() {
               <ThemedText type="smallBold" accessibilityLiveRegion="polite">
                 {visible.length} {visible.length === 1 ? 'facility' : 'facilities'} within {radiusKm} km
               </ThemedText>
-              {fromCache && savedAt !== null && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  Saved {formatSavedAt(savedAt)}
-                </ThemedText>
-              )}
+              <ThemedText type="small" themeColor="textSecondary">
+                {[sourceLabel(source), fromCache && savedAt !== null ? `saved ${formatSavedAt(savedAt)}` : null]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </ThemedText>
             </View>
           )}
 
@@ -140,6 +141,13 @@ export default function HomeScreen() {
       <FacilityDetails facility={selected} onClose={() => setSelected(null)} />
     </ThemedView>
   );
+}
+
+function sourceLabel(source: DataSource | null) {
+  if (!source) return null;
+  if (source.kind === 'live') return 'Live from OpenStreetMap';
+  const updated = new Date(source.updatedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  return `Offline list, updated ${updated}`;
 }
 
 function ControlRow({ label, children }: { label: string; children: React.ReactNode }) {

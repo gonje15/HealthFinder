@@ -28,6 +28,8 @@ export const Config = {
   defaultRadiusKm: parsePositiveNumber(process.env.EXPO_PUBLIC_DEFAULT_RADIUS_KM, 5),
   /** Time allowed for each Overpass server before trying the next, in milliseconds. */
   requestTimeoutMs: parsePositiveNumber(process.env.EXPO_PUBLIC_REQUEST_TIMEOUT_MS, 20000),
+  /** Country-wide facility list searched on the device before falling back to Overpass. */
+  facilityListUrl: process.env.EXPO_PUBLIC_FACILITY_LIST_URL || '/data/facilities-mw.json',
 } as const;
 
 export const RadiusOptionsKm = [2, 5, 10] as const;

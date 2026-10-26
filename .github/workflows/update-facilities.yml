@@ -1,0 +1,39 @@
+# Refreshes the on-device facility list from OpenStreetMap once a month (and on demand from
+# the Actions tab). A changed list is committed to main, which makes Vercel redeploy.
+name: Update facility list
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the Malawi facility list
+        run: |
+          pip install osmium
+          python scripts/export_facilities.py
+
+      - name: Commit if the data changed
+        run: |
+          # generatedAt changes on every run, so compare the facilities only.
+          if git diff --quiet HEAD -- public/data || [ "$(git show HEAD:public/data/facilities-mw.json | python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["elements"]))')" = "$(python -c 'import json; print(json.dumps(json.load(open("public/data/facilities-mw.json", encoding="utf-8"))["elements"]))')" ]; then
+            echo "No facility changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          git commit -m "Update Malawi facility list from OpenStreetMap"
+          git push
